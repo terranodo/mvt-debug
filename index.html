@@ -23,6 +23,12 @@
 						},
 						// define your MVT endpoint
 						url:'http://tegola.cfapps.io/maps/bonn_osm/{z}/{x}/{y}.vector.pbf'
+					},
+					{
+						controller:{
+							pos:{bottom:10,left:10}
+						},
+						url:'http://osm2vectortiles-3.tileserver.com/v2/{z}/{x}/{y}.pbf'
 					}
 					// additional layers may be added here as objects in the same format as layer 1
 				]
@@ -65,6 +71,7 @@
 				forest:{fillColor:colors.green[5]},
 				grassland:{fillColor:colors.green[2]},
 				lakes:{fillColor:colors.blue[5]},
+				landuse:{fillColor:colors.gray[4].concat(0.3)},
 				medical:{fillColor:colors.red[5]},
 				military:{fillColor:colors.purplePink[5]},
 				main_roads:{strokeColor:colors.purple[7],strokeWidth:2.5},
