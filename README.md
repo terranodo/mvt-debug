@@ -12,7 +12,7 @@ MVT Debug will give each feature layer a color and a row in the legend. To turn 
 Zooming and panning around the map will rebuild the legend according to the features that are being rendered in the current viewport. This should help to identify which features are on/off at different zoom levels.
 
 ## More layers
-Additional layers may be added to the map by adding a new layer to the configuration layers array. MVT Debug will render layers on top of each other using the same coordinates. This may be useful for comparing two different endpoints.
+Additional layers may be added to the map by adding a new layer to the configuration layers array. MVT Debug will render layers on top of each other using the same coordinates. This may be useful for comparing features on two different endpoints.
 
 ## Additional features
 On the roadmap for MVT Debug is the ability to control the colors of layers.

@@ -11,7 +11,7 @@
 			*/
 			var mvtConfig = {
 				view:{
-					// the map will initially center on this point ()
+					// the map will initially center on this point 3857 projection/ Web Mercador
 					center:[790793.4954921771, 6574927.869849075], // these values will center on Bonn, Germany
 					zoom:14 // initial zoom level 1 for the furthest out and 20 for very zoomed in
 				},
@@ -276,9 +276,6 @@
 						format: new ol.format.MVT(),
 						tileGrid: ol.tilegrid.createXYZ({maxZoom: 22}),
 						tilePixelRatio: 16,
-						format:new ol.format.MVT({
-							featureClass:ol.Feature
-						}),
 						url:layerConfig.url
 					}),
 					style:style(i)
