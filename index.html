@@ -3,53 +3,111 @@
 	<head>
 		<title>MVT OL Debug</title>
 		<link rel="stylesheet" href="http://openlayers.org/en/v3.18.2/css/ol.css" type="text/css">
-		<script src="http://openlayers.org/en/v3.18.2/build/ol.js"></script>
-
-		<script type="text/javascript">
-			/***** MVT Config *****
-				Change the following configuration options for your MVT instance
-			*/
-			var mvtConfig = {
-				view:{
-					// the map will initially center on this point 3857 projection/ Web Mercador
-					center:[790793.4954921771, 6574927.869849075], // these values will center on Bonn, Germany
-					zoom:14 // initial zoom level 1 for the furthest out and 20 for very zoomed in
-				},
-				layers:[
-					// layer 1
-					{
-						controller:{
-							pos:{top:10,right:10} // position of the features legend
-						},
-						// define your MVT endpoint
-						url:'http://tegola.cfapps.io/maps/bonn_osm/{z}/{x}/{y}.vector.pbf'
-					},
-					{
-						controller:{
-							pos:{bottom:10,left:10}
-						},
-						url:'http://osm2vectortiles-3.tileserver.com/v2/{z}/{x}/{y}.pbf'
-					}
-					// additional layers may be added here as objects in the same format as layer 1
-				]
-			};
-		</script>
+		<script src="http://openlayers.org/en/v3.18.2/build/ol-debug.js"></script>
 
 		<style>
+			*{padding:0;margin:0;}
+			body{font-family:Verdana,sans-serif;}
 			.map {
 				width:100%;
 				height: 100%;
 				position: absolute;
 				background: #f8f4f0;
 			}
+			#stats{position:absolute;bottom:0;right:0;left:0;z-index:2000;background-color:rgba(230,230,230,0.9);padding:10px;
+				line-height:30px;font-size:16px;}
+			#stats input{line-height:24px;font-size:14px;padding:0 4px;}
+			#stats button{line-height:24px;font-size:14px;padding:0 4px;float:right;background-color:rgb(34,94,168);border:1px solid rgb(37,52,148);cursor:pointer;color:#fff;margin-top:3px;}
+			#stats button:hover{background-color:rgb(37,52,148);}
+			#stats span{position:relative;}
+			.source{position:absolute;bottom:38px;left:0;right:6px;background-color:rgba(250,250,250,0.9);}
+			.featureLayer{overflow:hidden;line-height:16px;cursor:pointer;display:none;}
+			#stats .featureLayer{display:block;}
+			.featureLayer:hover{background-color:#fff;}
+			.featureLayer .colorBox{width:14px;height:14px;display:inline-block;margin:3px 4px 0 4px;}
+			.featureLayer span{line-height:16px;font-size:12px;}
+			a{text-decoration:none;}
 		</style>
 	</head>
 	<body id="body">
+		<form id="stats">
+			<span>
+				<div id="source1" class="source">
+				</div>
+				<a id="sourceLink1" href="javascript:">S1:</a>
+				<input id="sourceInp1" type="text" name="source1" class=""/>
+			</span>
+			<span>
+				<div id="source2" class="source">
+				</div>
+				<a id="sourceLink2" href="javascript:">S2:</a>
+				<input id="sourceInp2" type="text" name="source2" class=""/>
+			</span>
+			<span>
+				<label>X:</label>
+				<input id="centerInpX" name="centerX"/>
+			</span>
+			<span>
+				<label>Y:</label>
+				<input id="centerInpY" name="centerY"/>
+			</span>
+			<span>
+				<label>Zoom:</label>
+				<input id="zoomInp" name="zoom" size="2"/>
+				<button>Go</button>
+			</span>
+		</form>
+
+		<div id="featureLayerTpl" class="featureLayer">
+			<div class="colorBox"></div>
+			<span class="label"></span>
+		</div>
+
 		<div id="map" class="map"></div>
 	</body>
 	<script type="text/javascript">
 
 		(function(){
+
+			var config = {
+				centerX:790793.4954921771, 
+				centerY:6574927.869849075, // these values will center on Bonn, Germany
+				zoom:14, // initial zoom level 1 for the furthest out and 20 for very zoomed in
+				source1:'http://tegola.cfapps.io/maps/bonn_osm/{z}/{x}/{y}.vector.pbf',
+				source2:'http://osm2vectortiles-3.tileserver.com/v2/{z}/{x}/{y}.pbf'
+			};
+
+			//get url vars
+			var uriVars = function(str){
+				var vars = {};
+				str = str || window.location.href;
+			    var hashes = str.slice(str.indexOf('?') + 1).split('&');
+			    for(var i=0,len=hashes.length;i<len;i++){
+			        var hash = hashes[i].split('=');
+			        vars[hash[0]] = decodeURIComponent(hash[1]);
+			    }
+			    return vars;
+			};
+
+			var qry = uriVars();
+
+			qry.source1 = (qry.source1 !== undefined)? qry.source1 : config.source1;
+			qry.source2 = (qry.source2 !== undefined)? qry.source2 : config.source2;
+			qry.centerX = qry.centerX || config.centerX;
+			qry.centerY = qry.centerY || config.centerY;
+			qry.zoom = qry.zoom || config.zoom;
+
+			var sourceInp1 = document.getElementById('sourceInp1');
+			var sourceInp2 = document.getElementById('sourceInp2');
+			var centerInpX = document.getElementById('centerInpX');
+			var centerInpY = document.getElementById('centerInpY');
+			var zoomInp = document.getElementById('zoomInp');
+
+			sourceInp1.value = qry.source1;
+			sourceInp2.value = qry.source2;
+			centerInpX.value = qry.centerX;
+			centerInpY.value = qry.centerY;
+			zoomInp.value = qry.zoom;
 
 			// colors from http://colorbrewer2.org/
 			var colors = {
@@ -81,6 +139,7 @@
 				sand:{fillColor:colors.brown[6]},
 				schools:{fillColor:colors.red[6]},
 				water:{fillColor:colors.blue[5]},
+				waterway:{fillColor:colors.blue[5]},
 				
 				alt1:{fillColor:colors.purplePink[3],strokeColor:colors.purplePink[4],strokeWidth:1},
 				alt2:{fillColor:colors.greenBlue[3],strokeColor:colors.greenBlue[4],strokeWidth:1},
@@ -89,7 +148,7 @@
 				alt5:{fillColor:colors.green[3],strokeColor:colors.green[4],strokeWidth:1},
 			};
 
-			var layers = [];
+			var layers = [{},{}];
 
 			var styles = {};
 			var stylesInit = function(){
@@ -120,59 +179,55 @@
 			};
 
 			/*
+			formBuild (fun): builds OL layer controllers
+			*/
+			var formBuild = function(){
+				var input = document.createElement('input');
+				input.setAttribute('type','text');
+				input.style.zIndex = 2000;
+				document.getElementById('body').appendChild(input);
+			};
+
+			formBuild();
+
+			/*
 			controllersBuild (fun): builds OL layer controllers
 			*/
 			var controllersBuild = function(){
-				for (var i=0,len=mvtConfig.layers.length;i<len;i++){
-					var layerConfig = mvtConfig.layers[i];
+
+				for (var i=0,len=2;i<len;i++){
 					var layer = layers[i];
-					if (layerConfig.controller){
-						var con = layerConfig.controller
-						con.pos = con.pos || {top:'10px',right:'10px'};
-						var conDiv = document.createElement('div');
-						conDiv.style.position = 'absolute';
-						conDiv.style.width = '200px';
-						conDiv.style.padding = '12px';
-						conDiv.style.minHeight = '100px';
-						conDiv.style.zIndex = '2000';
-						conDiv.style.backgroundColor = '#fff';
 
-						if (con.pos.top) conDiv.style.top = con.pos.top+'px';
-						if (con.pos.bottom) conDiv.style.bottom = con.pos.bottom+'px';
-						if (con.pos.left) conDiv.style.left = con.pos.left+'px';
-						if (con.pos.right) conDiv.style.right = con.pos.right+'px';
-
-						layers[i].controllerDiv = conDiv;
-
-						document.getElementById('body').appendChild(conDiv);
-
-						conDiv.addEventListener('click',function(event){
-							var target = event.target || event.srcElement;
-							var name = target.getAttribute('name');
-							var layerInd = target.getAttribute('layerInd');
-							if (layers[layerInd].featureLayers[name].render){
-								layers[layerInd].featureLayers[name].render = false;
-								target.style.backgroundColor = '#fff';
-								target.style.color = '#333';
+					var conDiv = document.getElementById('source'+(i+1));
+					layers[i].controllerDiv = conDiv;
+					layers[i].visible = true;
+					conDiv.addEventListener('click',function(event){
+						var target = event.target || event.srcElement;
+						if (target.className.indexOf('featureLayer') === -1){
+							var parent = target.parentNode;
+							if (parent.className.indexOf('featureLayer') !== -1){
+								target = parent;
 							} else {
-								layers[layerInd].featureLayers[name].render = true;
-								var color = target.getAttribute('bgColor');
-								target.style.backgroundColor = color;
-								target.style.color = '#fff';
+								return;
 							}
-							layers[layerInd].layerOL.changed(); //trigger rerender
-						});
-					}
+						}
+						var name = target.getAttribute('name');
+						var layerInd = target.getAttribute('layerInd');
+						var colorBox = target.getElementsByClassName('colorBox')[0];
+						if (layers[layerInd].featureLayers[name].render){
+							layers[layerInd].featureLayers[name].render = false;
+							colorBox.style.backgroundColor = '#fff';
+						} else {
+							layers[layerInd].featureLayers[name].render = true;
+							var color = target.getAttribute('bgColor');
+							colorBox.style.backgroundColor = color;
+						}
+						layers[layerInd].layerOL.changed(); //trigger rerender
+					});
 				}
 			};
 
-			var featureLayerTpl = document.createElement('div');
-			featureLayerTpl.className = 'featureLayer';
-			featureLayerTpl.style.font = 'Verdana,sans-serif';
-			featureLayerTpl.style.lineHeight = '20px';
-			featureLayerTpl.style.padding = '3px';
-			featureLayerTpl.style.margin = '1px 0';
-			featureLayerTpl.style.cursor = 'pointer';
+			var featureLayerTpl = document.getElementById('featureLayerTpl');
 
 			/*
 			featureLayerBuild (fun): 
@@ -181,15 +236,18 @@
 					name (str): the name of the featureLayer
 			*/
 			var alt = 1; //tracks the alternate colors used (for variance)
-			featureLayerBuild = function(featureLayer){
+			var featureLayerBuild = function(featureLayer){
 				if (!layers[featureLayer.layerInd].featureLayers) 
 					layers[featureLayer.layerInd].featureLayers = {};
 
 				if (!layers[featureLayer.layerInd].featureLayers[featureLayer.name] || !layers[featureLayer.layerInd].featureLayers[featureLayer.name].built){
-					var featureDiv = featureLayerTpl.cloneNode();
+					var featureDiv = featureLayerTpl.cloneNode(true);
 
-					var nameText = document.createTextNode(featureLayer.name); 
-  					featureDiv.appendChild(nameText);
+					var nameSpan = featureDiv.getElementsByTagName('SPAN')[0];
+
+					//console.log('featureDiv:',featureDiv);
+
+					nameSpan.innerHTML = featureLayer.name;
 
   					featureDiv.setAttribute('name',featureLayer.name);
   					featureDiv.setAttribute('layerInd',featureLayer.layerInd);
@@ -211,15 +269,19 @@
 						//console.log('color:',color);
 						if (color){
 							var colorStr = 'rgb('+color[0]+','+color[1]+','+color[2]+')';
+
+							var colorBox = featureDiv.getElementsByTagName('DIV')[0];
+							//console.log('colorBox:',colorBox)
+
 							
 							featureDiv.setAttribute('bgColor',colorStr);
 
 							if (layers[featureLayer.layerInd].featureLayers[featureLayer.name].render){
-								featureDiv.style.backgroundColor = colorStr;
-								featureDiv.style.color = '#fff';
+								colorBox.style.backgroundColor = colorStr;
+								colorBox.style.color = '#fff';
 							} else {
-								featureDiv.style.backgroundColor = '#fff';
-								featureDiv.style.color = '#333';
+								colorBox.style.backgroundColor = '#fff';
+								colorBox.style.color = '#333';
 							}
 							layers[featureLayer.layerInd].controllerDiv.appendChild(featureDiv);
 						}
@@ -232,14 +294,43 @@
 			featureLayersReset (fun): resets the feature layers so that the legend can be rebuilt
 
 			*/
-			featureLayersReset = function(){
-				//console.log('feature layer reset:',layers,styles,stylesBase);
+			var featureLayersReset = function(){
 				for (var i=0,len=layers.length;i<len;i++){
 					for (var j in layers[i].featureLayers){
 						layers[i].featureLayers[j].built = false;
 					}
 					layers[i].controllerDiv.innerHTML = '';
 				}
+			};
+
+			var statBind = function(){
+				map.on('moveend',function(){
+					var center = map.getView().getCenter();
+					var zoom = map.getView().getZoom();
+					//console.log('mao view:',map.getView().getCenter());
+
+					centerInpX.value = center[0];
+					centerInpY.value = center[1];
+					zoomInp.value = zoom;
+				});
+				stats.addEventListener('click',function(event){
+					var target = event.target || event.srcElement;
+					if (target.tagName == 'INPUT'){
+						setTimeout(function(){
+							target.select();
+						},1);
+					}
+				});
+
+				stats.addEventListener('keyup',function(event){
+					var target = event.target || event.srcElement;
+
+					if (target.tagName == 'INPUT'){
+						if (event.keyCode == 13){ //enter
+
+						}
+					}
+				});
 			};
 
 
@@ -273,34 +364,69 @@
 			stylesInit();
 
 			var layersOL = [];
-			for (var i=0,len=mvtConfig.layers.length;i<len;i++){
-				var layerConfig = mvtConfig.layers[i];
-				var layer = new ol.layer.VectorTile({
-					source: new ol.source.VectorTile({
-						attributions: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> ' +
-						'© <a href="http://www.openstreetmap.org/copyright">' +
-						'OpenStreetMap contributors</a>',
-						format: new ol.format.MVT(),
-						tileGrid: ol.tilegrid.createXYZ({maxZoom: 22}),
-						tilePixelRatio: 16,
-						url:layerConfig.url
-					}),
-					style:style(i)
-				});
-				layersOL.push(layer);
-				layers.push({layerOL:layer});
+			for (var i=0,len=2;i<len;i++){
+				if (qry['source'+(i+1)]){
+					//console.log('source'+i);
+					var layer = new ol.layer.VectorTile({
+						source: new ol.source.VectorTile({
+							attributions: '© <a href="https://www.mapbox.com/map-feedback/">Mapbox</a> ' +
+							'© <a href="http://www.openstreetmap.org/copyright">' +
+							'OpenStreetMap contributors</a>',
+							format: new ol.format.MVT(),
+							tileGrid: ol.tilegrid.createXYZ({maxZoom: 22}),
+							tilePixelRatio: 16,
+							url:qry['source'+(i+1)]
+						}),
+						style:style(i)
+					});
+					layersOL.push(layer);
+					layers[i] = {layerOL:layer};
+				}
 			}
+
+			document.getElementById('sourceLink1').addEventListener('click',function(){
+				if (layers[0] && layers[0].layerOL){
+					if (layers[0].visible){
+						layers[0].layerOL.setVisible(false);
+						layers[0].visible = false;
+						layers[0].controllerDiv.style.display = 'none';
+					} else {
+						layers[0].layerOL.setVisible(true);
+						layers[0].visible = true;
+						layers[0].controllerDiv.style.display = 'block';
+					}
+				}
+			});
+
+			document.getElementById('sourceLink2').addEventListener('click',function(){
+				if (layers[1] && layers[1].layerOL){
+					if (layers[1].visible){
+						layers[1].layerOL.setVisible(false);
+						layers[1].visible = false;
+						layers[1].controllerDiv.style.display = 'none';
+					} else {
+						layers[1].layerOL.setVisible(true);
+						layers[1].visible = true;
+						layers[1].controllerDiv.style.display = 'block';
+					}
+				}
+			});
+
+
+			//layer.setVisible(false);
 
 			var map = new ol.Map({
 				layers:layersOL,
 				target:'map',
 				view:new ol.View({
-					center:mvtConfig.view.center,
-					zoom:mvtConfig.view.zoom
+					center:[Number(qry.centerX),Number(qry.centerY)],
+					zoom:Number(qry.zoom)
 				})
 			});
 
 			controllersBuild();
+
+			statBind();
 		})();
 	</script>
 </html>
